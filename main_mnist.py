@@ -2,7 +2,8 @@ import torch
 from torch.autograd import Variable
 from utee import selector
 
-model_raw, ds_fetcher, is_imagenet = selector.select('mnist')
+model_raw, ds_fetcher, is_imagenet = selector.select('mnist',
+                                                     cuda=torch.cuda.is_available())
 ds_val = ds_fetcher(batch_size=10, train=False, val=True)
 
 def validate():
@@ -14,8 +15,10 @@ def validate():
     Ytarget = []
     with torch.no_grad():
         for idx, (data, target) in enumerate(ds_val):
-            data = Variable(torch.FloatTensor(data)).cuda()
-            target = target.cuda()
+            data = torch.FloatTensor(data)
+            if torch.cuda.is_available():
+                target = target.cuda()
+                data = data.cuda()
             output = model_raw(data)
             _, predicted = torch.max(output.data, 1)
             total += target.size(0)

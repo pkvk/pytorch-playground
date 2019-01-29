@@ -16,8 +16,9 @@ from torch.autograd import Variable
 from utee import selector
 
 
-model_raw, ds_fetcher, is_imagenet = selector.select('mnist')
-ds_val = ds_fetcher(batch_size=10, train=False, val=True)
+model_raw, ds_fetcher, is_imagenet = selector.select('mnist',
+                                                     cuda=torch.cuda.is_available())
+
 
 def _sweep(ar, threshold=4):
     min1, max1 = -1, -1
@@ -84,7 +85,9 @@ def recognize(im):
 
     x = torch.tensor(np.array(img))
     x = x.unsqueeze(0)
-    x = x.type(torch.FloatTensor).cuda()
+    x = x.type(torch.FloatTensor)
+    if torch.cuda.is_available():
+        x = x.cuda()
     x = x / 255.0
     # x = 1 - x / 255.0
 

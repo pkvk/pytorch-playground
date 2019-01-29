@@ -10,6 +10,7 @@
 
 2) Install pytorch and install other requirements:
 
+    $ pip3 install torch torchvision opencv-python-headless
     $ pip3 install gunicorn Flask
 
 3) Run (four) web workers:
