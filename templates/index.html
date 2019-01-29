@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+#sheet-container {
+  width: 280px;
+  height: 280px;
+
+  border: 1px solid black;
+}
+
+#sheet {
+  background-color: #000;
+}
+
+#hist {
+  width: 450px;
+}
+
+</style>
+
+<!-- Drawing canvas; alternative: p5js.org -->
+<script type='text/javascript' src='static/fabric.min.js'></script>
+
+<!-- Bar chart -->
+<script src="static/d3.js" charset="utf-8"></script>
+<script src="static/nv.d3.js"></script>
+<link rel="stylesheet" href="static/nv.d3.css" />
+
+<!-- DOM, Ajax -->
+<script type='text/javascript' src='static/jquery-3.3.1.min.js'></script>
+
+</head>
+<body>
+  <br>
+  <br>
+  <br>
+  <center>
+    <div id="sheet-container">
+      <canvas id="sheet" width="280" height="280"></canvas>
+    </div>
+    <br>
+    <div>
+      <button id="read">Read</button>
+      <button id="clear">Clear</button>
+      <br>
+      <br>
+      <div id="result"></div>
+      <div id="hist"><svg height="290"></svg></div>
+    </div>
+  </center>
+<script>
+var canvas = new fabric.Canvas('sheet');
+canvas.isDrawingMode = true;
+canvas.freeDrawingBrush.width = 45;
+canvas.freeDrawingBrush.color = "white";
+
+var mouseUpHandler = function(evt) {
+    processImage();
+}
+
+canvas.on('mouse:up', mouseUpHandler);
+
+canvas.renderTop();
+canvas.backgroundColor="black";
+
+clearCanvas = function(){
+    $("#result").fadeOut("slow");
+    $("#hist").fadeOut("slow");
+    canvas.clear();
+}
+
+function argmax(ar){
+  var res = 0;
+      val = Number.NEGATIVE_INFINITY;
+  for (var i = 0; i < ar.length; i++) {
+    if (val < ar[i]) {
+      val = ar[i];
+      res = i;
+    }
+  }
+
+  return res;
+}
+
+// Bar chart rendering
+function renderChart(chart, data, container) {
+    d3.select(container)
+            .datum(data)
+            .transition().duration(1000).call(chart);
+
+    nv.utils.windowResize(
+            function() {
+                chart.update();
+            }
+    );
+}
+
+function createMultiBarChart(data, container) {
+
+    var chart = nv.models.multiBarChart()
+            .width(450)
+            .height(200)
+            .x(function(d,i) { return d[0] })  // X values modifier
+            .y(function(d) { return d[1] })    // Y values modifier
+            .margin({left:20,top:50,right:20,bottom:10});
+
+    chart.showLegend(false);
+    chart.showControls(false);
+
+    chart.yAxis.axisLabel('Score');
+    chart.xAxis.axisLabel('Digit');
+    // chart.xAxis.rotateLabels(90)
+    chart.xAxis = chart.xAxis
+            .height(500)
+            .highlightZero(true);
+//            .showMaxMin(true)
+//            .tickFormat(function(d) {
+//                return d3.time.format('%H:%M')(new Date(d * 1000));
+//            })
+//                .tickSize(24);
+
+    renderChart(chart, data, container);
+    return chart;
+
+}
+
+function createData(y) {
+  var values = []
+  for (var i = 0; i < 10; i++) {
+      values.push([i, y[i]]);
+  }
+  var dta = [
+      {
+          "key": "Scores",
+          "values": values
+      }
+  ];
+  return dta;
+}
+
+function updateChart(el, chart, newValues) {
+    // Update the SVG with the new data and call chart
+    chartData = d3.select(el);
+    chartData.datum(createData(newValues)).transition().duration(400).call(chart);
+    nv.utils.windowResize(chart.update);
+};
+
+var x = [];
+for (var i = 0; i < 10; i++) {
+  x.push(0);
+}
+
+var hist1 = createMultiBarChart(createData(x), '#hist svg');
+
+processImage = function(){
+    canvas.isDrawingMode = false;
+
+    if(!window.localStorage){alert("This function is not supported by your browser."); return;}
+    // to PNG
+    imgData = canvas.toDataURL('png');
+
+    canvas.isDrawingMode = true;
+
+
+    $.ajax({
+      type: "POST",
+      url: "/check",
+      data:{
+        imageBase64: imgData
+      }
+    }).done(function(msg) {
+
+      var y = JSON.parse(msg);
+
+      r = argmax(y);
+      console.log(y);
+      console.log(r);
+
+      updateChart('#hist svg', hist1, y);
+
+      $("#hist").fadeIn("slow");
+      $("#result").text(`Detected: ${r}`);
+      $("#result").show()
+
+    }).fail(function(){
+      alert('Cannot perform the request');
+    });
+};
+
+// Initially hide the empty histogram
+$("#hist").hide();
+
+// Bind the button actions
+d3.select("#read").on("click", processImage);
+d3.select("#clear").on("click", clearCanvas);
+
+</script>
+</body>
+</html>

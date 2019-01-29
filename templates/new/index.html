@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+
+path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 20;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+#sheet {
+  background-color: #000;
+}
+
+</style>
+
+</head>
+<body>
+  <br>
+  <br>
+  <br>
+  <center>
+    <div id="sheet-container">
+      <svg id="sheet" width="450" height="280">
+      </svg>
+    </div>
+    <br>
+    <div>
+      <button id="read">Read</button>
+      <button id="clear">Clear</button>
+      <br>
+      <br>
+      <div id="result"></div>
+      <div id="hist"><svg height="290"></svg></div>
+    </div>
+  </center>
+
+  <script src="static/d3.v4.min.js"></script>
+  <script type='text/javascript' src='static/jquery-3.3.1.min.js'></script>
+  <script>
+// Canvas drawing
+var line = d3.line()
+    .curve(d3.curveBasis);
+
+var svg = d3.select("#sheet")
+    .call(d3.drag()
+        .container(function() { return this; })
+        .subject(function() { var p = [d3.event.x, d3.event.y]; return [p, p]; })
+        .on("start", dragstarted));
+
+function dragstarted() {
+  var d = d3.event.subject,
+      active = svg.append("path").datum(d),
+      x0 = d3.event.x,
+      y0 = d3.event.y;
+
+  d3.event.on("drag", function() {
+    var x1 = d3.event.x,
+        y1 = d3.event.y,
+        dx = x1 - x0,
+        dy = y1 - y0;
+
+    if (dx * dx + dy * dy > 100) d.push([x0 = x1, y0 = y1]);
+    else d[d.length - 1] = [x1, y1];
+    active.attr("d", line);
+  });
+}
+
+clearCanvas = function(){
+    svg.selectAll("*").remove();  // Clear the drawing surface
+    $("#result").fadeOut("slow");
+    $("#hist").fadeOut("slow");
+}
+
+d3.select("#clear").on("click", clearCanvas);
+
+function argmax(ar){
+  var res = 0;
+      val = Number.NEGATIVE_INFINITY;
+  for (var i = 0; i < ar.length; i++) {
+    if (val < ar[i]) {
+      val = ar[i];
+      res = i;
+    }
+  }
+
+  return res;
+}
+
+// http://nvd3.org/examples/multiBar.html
+// NB: d3 v3 is supported only
+function createMultiBarChart(data, container) {
+
+   // TODO
+}
+
+function createData(y) {
+  var values = []
+  for (var i = 0; i < 10; i++) {
+      values.push([i, y[i]]);
+  }
+  var dta = [
+      {
+          "key": "Scores",
+          "values": values
+      }
+  ];
+  return dta;
+}
+
+function updateChart(el, chart, newValues) {
+    // TODO
+};
+
+var x = [];
+for (var i = 0; i < 10; i++) {
+    x.push(0);
+}
+
+var hist1 = createMultiBarChart(createData(x), '#hist svg');
+
+processImage = function(imgData){
+    console.log(imgData);
+
+    $.ajax({
+      type: "POST",
+      url: "/check",
+      data:{
+        imageBase64: imgData
+      }
+    }).done(function(msg) {
+
+      var y = JSON.parse(msg);
+
+      r = argmax(y);
+      console.log(y);
+      console.log(r);
+
+      updateChart('#hist svg', hist1, y);
+
+      $("#hist").fadeIn("slow");
+      $("#result").text(`Detected: ${r}`);
+      $("#result").show()
+
+    }).fail(function(){
+      alert('Cannot perform the request');
+    });
+};
+
+// Initially hide the empty histogram
+$("#hist").hide();
+
+d3.select('#read').on('click', function(){
+    var width = 450;
+        height = 280;
+    // var node = svg.node();
+    // TODO: convert svg to imageBase64
+    // console.log(svgString);
+});
+
+  </script>
+
+</body>
+</html>
